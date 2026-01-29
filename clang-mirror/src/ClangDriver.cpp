@@ -51,14 +51,8 @@ namespace clang_reflect
         }
         else
         {
-            std::cerr << "cdb not found.";
+            Logger::out("CDB not found at location : " + pRootDir);
             std::abort();
-            //auto& fileManager = FileManager::Instance();
-            //auto& srcFiles = fileManager.getSourceFilePaths();
-            //auto& headerFiles = fileManager.getHeaderFilePaths();
-            //IncludesManager::Instance().initSourceHeaderDependencyGraph(headerFiles, srcFiles);
-
-            //runClangParser(pRootDir, srcFiles, std::move(cdb));
         }
     }
 
@@ -71,7 +65,7 @@ namespace clang_reflect
         Logger::resetDoneCounter(fileCount);
 
         //TODO: get the number of threads from command line
-        const int numCores = /*0; //*/std::thread::hardware_concurrency() - 2;
+        const int numCores = 0; //*/std::thread::hardware_concurrency() - 2;
         const int numThreads = (numCores <= 0 ? 1 : numCores);
 
         int endIndex = 0;
