@@ -11,7 +11,7 @@
 int main(int argc, const char** argv)
 {
     const auto& tsBegin = clmirror::Clock::now();
-    if (!clmirror::ClangDriver::compileSourceFiles(argc, argv))
+    if (clmirror::ClangDriver::compileSourceFiles(argc, argv))
     {
         clmirror::ReflectableInterface::Instance().dump();
         const auto& tsEnd = std::chrono::duration_cast<clmirror::Second> (clmirror::Clock::now() - tsBegin).count();

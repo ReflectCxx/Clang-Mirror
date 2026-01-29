@@ -12,6 +12,6 @@ namespace clmirror
 
     public:
 
-        static int compileSourceFiles(int argc, const char** argv);
+        static bool compileSourceFiles(int argc, const char** argv);
     };
 }

@@ -22,6 +22,7 @@
 #include "clang/Tooling/CompilationDatabase.h"
 
 #include "clang-tidy/ClangTidyOptions.h"
+#include "clang-tidy/ClangTidyDiagnosticConsumer.h"
 
 using namespace llvm;
 using namespace clang::tidy;
@@ -29,64 +30,13 @@ using namespace clang::tooling;
 
 namespace 
 {
-    static cl::desc desc(StringRef Description) { return { Description.ltrim() }; }
-
     static cl::OptionCategory ClangMirrorCategory("clang-mirror options");
-
-    static cl::opt<std::string> VfsOverlay("vfsoverlay",
-                                           desc(R"(Overlay the virtual filesystem described by file over the real file system.)"),
-                                           cl::value_desc("filename"),
-                                           cl::cat(ClangMirrorCategory));
-
-    static llvm::IntrusiveRefCntPtr<vfs::FileSystem> getVfsFromFile(const std::string& OverlayFile,
-                                                                    llvm::IntrusiveRefCntPtr<vfs::FileSystem> BaseFS) 
-    {
-        llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> Buffer = BaseFS->getBufferForFile(OverlayFile);
-        
-        if (!Buffer) {
-            llvm::errs() << "Can't load virtual filesystem overlay file '"
-                         << OverlayFile << "': " << Buffer.getError().message()
-                         << ".\n";
-            return nullptr;
-        }
-
-        IntrusiveRefCntPtr<vfs::FileSystem> FS = vfs::getVFSFromYAML(std::move(Buffer.get()), /*DiagHandler*/ nullptr, OverlayFile);
-        if (!FS) {
-            llvm::errs() << "Error: invalid virtual filesystem overlay file '" << OverlayFile << "'.\n";
-            return nullptr;
-        }
-        return FS;
-    }
-
-    static llvm::IntrusiveRefCntPtr<vfs::OverlayFileSystem> createBaseFS() 
-    {
-        llvm::IntrusiveRefCntPtr<vfs::OverlayFileSystem> BaseFS(new vfs::OverlayFileSystem(vfs::getRealFileSystem()));
-        if (!VfsOverlay.empty())
-        {
-            IntrusiveRefCntPtr<vfs::FileSystem> VfsFromFile = getVfsFromFile(VfsOverlay, BaseFS);
-            if (!VfsFromFile) {
-                return nullptr;
-            }
-            BaseFS->pushOverlay(std::move(VfsFromFile));
-        }
-        return BaseFS;
-    }
-
-    static std::unique_ptr<ClangTidyOptionsProvider> createOptionsProvider(llvm::IntrusiveRefCntPtr<vfs::FileSystem> FS) 
-    {
-        ClangTidyOptions DefaultOptions;
-        ClangTidyOptions OverrideOptions;
-        ClangTidyGlobalOptions GlobalOptions;
-
-        return std::make_unique<FileOptionsProvider>(std::move(GlobalOptions), std::move(DefaultOptions), 
-                                                     std::move(OverrideOptions), std::move(FS));
-    }
 }
 
 
 namespace clmirror
 {
-    int ClangDriver::compileSourceFiles(int argc, const char** argv)
+    bool ClangDriver::compileSourceFiles(int argc, const char** argv)
     {
         InitLLVM X(argc, argv);
         SmallVector<const char*> Args{ argv, argv + argc };
@@ -98,7 +48,7 @@ namespace clmirror
         cl::ExpansionContext ECtx(Alloc, Tokenizer);
         if (Error Err = ECtx.expandResponseFiles(Args)) {
             WithColor::error() << toString(std::move(Err)) << "\n";
-            return 1;
+            return false;
         }
 
         argc = static_cast<int>(Args.size());
@@ -110,21 +60,8 @@ namespace clmirror
         if (!OptionsParser) {
             llvm::WithColor::error() << llvm::toString(OptionsParser.takeError());
             Logger::out("Failed to initialize CommonOptionsParser.");
-            return 1;
+            return false;
         }
-
-        //llvm::IntrusiveRefCntPtr<vfs::OverlayFileSystem> BaseFS = createBaseFS();
-        //if (!BaseFS) {
-        //    Logger::out("Failed to initialize vfs::OverlayFileSystem.");
-        //    return 1;
-        //}
-
-        //auto OwningOptionsProvider = createOptionsProvider(BaseFS);
-        //auto* OptionsProvider = OwningOptionsProvider.get();
-        //if (!OptionsProvider) {
-        //    Logger::out("Failed to initialize ClangTidyOptionsProvider.");
-        //    return 1;
-        //}
 
         std::string cdbLoadErr;
         StringRef cdbPathStr("dummy");
@@ -134,7 +71,6 @@ namespace clmirror
         }
 
         auto cdb = OptionsParser->getCompilations().loadFromDirectory(cdbPathStr, cdbLoadErr);
-
         if (cdb)
         {
             const auto& srcFiles = cdb->getAllFiles();
@@ -148,20 +84,20 @@ namespace clmirror
         {
             Logger::out("CDB not found at location : " + cdbPathStr.str());
             Logger::out("error : " + cdbLoadErr);
-            return 1;
+            return false;
         }
-        return 0;
+        return true;
     }
 
 
-    void ClangDriver::runClangParser(const std::vector<std::string>& pSrcFiles, clang::tooling::CompilationDatabase& pCdb)
+    void ClangDriver::runClangParser(const std::vector<std::string>& pSrcFiles, CompilationDatabase& pCdb)
     {
         const int fileCount = pSrcFiles.size();
 
         Logger::resetDoneCounter(fileCount);
 
         //TODO: get the number of threads from command line
-        const int numCores = 0; //*/std::thread::hardware_concurrency() - 2;
+        const int numCores = /*0; //*/std::thread::hardware_concurrency() - 2;
         const int numThreads = (numCores <= 0 ? 1 : numCores);
 
         int endIndex = 0;

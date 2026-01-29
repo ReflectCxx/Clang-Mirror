@@ -3,19 +3,19 @@
 #include <vector>
 #include <string>
 
-#include "clang/Tooling/Tooling.h"
-#include "clang/Tooling/CommonOptionsParser.h"
+namespace clang::tooling {
+	class CompilationDatabase;
+}
 
 namespace clmirror
 {
 	class ASTParser
 	{
 		const std::vector<std::string>& m_files;
-		clang::tooling::CompilationDatabase& m_cdb;
+		
+		clang::tooling::CompilationDatabase& m_compileDb;
 
 		ASTParser() = delete;
-
-		llvm::Expected<clang::tooling::CommonOptionsParser> getCommonOptionsParser(int pArgc, const std::vector<char*>& pArgv);
 
 	public:
 
