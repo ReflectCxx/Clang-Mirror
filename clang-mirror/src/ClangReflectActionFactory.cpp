@@ -49,11 +49,11 @@ namespace {
 
 		std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) override
 		{
-			/*insignificant LOC. 
-			  just to force linker to link with dependent libs.*/
-#if !defined(_WIN32) && !defined(_WIN64)
-			clang::ento::CreateAnalysisConsumer(Compiler);
-#endif		//--ends--!
+//			/*insignificant LOC. 
+//			  just to force linker to link with dependent libs.*/
+//#if !defined(_WIN32) && !defined(_WIN64)
+//			clang::ento::CreateAnalysisConsumer(Compiler);
+//#endif		//--ends--!
 
 			Compiler.getDiagnosticOpts().ShowCarets = false;
 			return std::make_unique<FindRecordDeclsConsumer>(m_targetSrcFile, m_unreflectedFunctions);

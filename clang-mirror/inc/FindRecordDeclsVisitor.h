@@ -7,7 +7,6 @@ namespace clmirror {
 
     class FindRecordDeclsVisitor : public clang::RecursiveASTVisitor<FindRecordDeclsVisitor>
     {
-        std::string m_baseDir;
         const std::string& m_currentSrcFile;
         std::vector<std::string>& m_unreflectedFunctions;
 
@@ -22,6 +21,8 @@ namespace clmirror {
         
         const std::optional<std::string>
         getTypeDefAliasForType(const clang::QualType& pQType, std::unordered_map<std::string, std::string>& pTemplateTypeDefs);
+
+        std::string extractParentTypeName(clang::FunctionDecl* pFuncDecl);
 
     public:
 

@@ -20,7 +20,7 @@ namespace clmirror {
 	void Logger::out(const std::string& pMsg)
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
-		std::cout << BLUE << "\n[cl-reflect]\t" << RESET << pMsg;
+		std::cout << BLUE << "\n[clang-mirror]\t" << RESET << pMsg;
 	}
 
 	void Logger::outException(const std::string& pMsg)

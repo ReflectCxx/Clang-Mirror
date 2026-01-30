@@ -15,12 +15,9 @@ namespace clmirror
 	using namespace clang;
 
 	FindRecordDeclsVisitor::FindRecordDeclsVisitor(const std::string& pCurrentSrcFile, std::vector<std::string>& pUnreflectedFunctions)
-	: m_currentSrcFile(pCurrentSrcFile)
-	, m_unreflectedFunctions(pUnreflectedFunctions)
-	{
-
-	}
-
+		: m_currentSrcFile(pCurrentSrcFile)
+		, m_unreflectedFunctions(pUnreflectedFunctions)
+	{ }
 
 	const bool FindRecordDeclsVisitor::isInUserCode(const NamedDecl* pNameDecl)
 	{
@@ -103,6 +100,32 @@ namespace clmirror
 			}
 		}
 	}
+
+
+
+	std::string FindRecordDeclsVisitor::extractParentTypeName(clang::FunctionDecl* pFuncDecl)
+	{
+		const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFuncDecl);
+		if (!method)
+			return {};
+
+		const clang::CXXRecordDecl* record = method->getParent();
+
+		clang::QualType qt = record->getTypeForDecl()->getCanonicalTypeInternal();
+
+		clang::PrintingPolicy policy(pFuncDecl->getASTContext().getLangOpts());
+		policy.SuppressScope = false;
+		policy.SuppressTagKeyword = true;
+		policy.FullyQualifiedName = true;
+
+		std::string result;
+		llvm::raw_string_ostream os(result);
+		qt.print(os, policy);
+
+		return os.str();
+	}
+
+
 
 
 	const std::string FindRecordDeclsVisitor::extractParameterType(clang::ParmVarDecl* pParmVarDecl)
@@ -207,7 +230,7 @@ namespace clmirror
 			return true;
 		}
 
-		const auto& functionName = pFuncDecl->getQualifiedNameAsString();
+		const auto& functionName = pFuncDecl->getDeclName().getAsString();
 		if (pFuncDecl->isThisDeclarationADefinition() && isMemberFunctionOrInNamespace(pFuncDecl))
 		{
 			if (pFuncDecl->isInvalidDecl()) {
@@ -241,7 +264,19 @@ namespace clmirror
 					}
 					parmTypes.push_back(extractParameterType(params[index]));
 				}
-				ReflectableInterface::Instance().addFunctionSignature(m_currentSrcFile, declSrcFile, functionName, parmTypes);
+
+				
+				const std::string returnStr = "";
+				const std::string recordStr = extractParentTypeName(pFuncDecl);
+
+				MetaKind metaKind = MetaKind::MemberNonConst;
+				if (llvm::isa<clang::CXXConstructorDecl>(pFuncDecl) || 
+					llvm::isa<clang::CXXDestructorDecl>(pFuncDecl)) {
+					metaKind = MetaKind::CtorDtor;
+				}
+
+				ReflectableInterface::Instance().addFunctionSignature(metaKind, m_currentSrcFile, declSrcFile, 
+																	  recordStr, functionName, returnStr, parmTypes);
 			}
 		}
 		return true;

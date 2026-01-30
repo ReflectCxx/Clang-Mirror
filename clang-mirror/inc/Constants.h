@@ -27,11 +27,25 @@ namespace clmirror {
 	static const char* const STRUCT = "struct";
 
 	static const char* const INC_MANAGERS_DATA = "incManagersData.txt";
-	static const char* const CL_REFLECT_INTERFACE = "clReflectInterface.txt";
+	static const char* const CL_REFLECT_INTERFACE = "rtcl_meta_ids.h";
 
 	using ErrorTuple = std::tuple<std::string, std::string, std::string>;
 
 	using Clock = std::chrono::high_resolution_clock;
 
 	using Second = std::chrono::duration<double, std::ratio<1> >;
+}
+
+
+namespace clmirror 
+{
+	enum class MetaKind 
+	{
+		None,
+		CtorDtor,
+		NonMember,
+		MemberConst,
+		MemberStatic,
+		MemberNonConst
+	};
 }

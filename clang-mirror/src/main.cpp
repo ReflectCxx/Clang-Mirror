@@ -8,6 +8,8 @@
 #include "ClangDriver.h"
 #include "ReflectableInterface.h"
 
+#include "rtcl_meta_ids.h"
+
 int main(int argc, const char** argv)
 {
     const auto& tsBegin = clmirror::Clock::now();
@@ -22,5 +24,8 @@ int main(int argc, const char** argv)
         clmirror::Logger::outException("\n[clang-mirror failed]");
     }
     std::cout << clmirror::RESET << std::endl;
+
+    rtl
+
     return 0;
 }

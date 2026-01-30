@@ -70,7 +70,8 @@ namespace clmirror
             cdbPathStr = pathList.front();
         }
 
-        auto cdb = OptionsParser->getCompilations().loadFromDirectory(cdbPathStr, cdbLoadErr);
+        auto cdb = CompilationDatabase::loadFromDirectory(cdbPathStr, cdbLoadErr);
+
         if (cdb)
         {
             const auto& srcFiles = cdb->getAllFiles();
@@ -97,7 +98,7 @@ namespace clmirror
         Logger::resetDoneCounter(fileCount);
 
         //TODO: get the number of threads from command line
-        const int numCores = /*0; //*/std::thread::hardware_concurrency() - 2;
+        const int numCores = 0; //*/std::thread::hardware_concurrency() - 2;
         const int numThreads = (numCores <= 0 ? 1 : numCores);
 
         int endIndex = 0;

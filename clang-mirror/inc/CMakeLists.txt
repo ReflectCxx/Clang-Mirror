@@ -7,6 +7,8 @@ set(CLREFLECT_INCS
 	"${CMAKE_CURRENT_LIST_DIR}/FindRecordDeclsVisitor.h"
 	"${CMAKE_CURRENT_LIST_DIR}/Logger.h"
 	"${CMAKE_CURRENT_LIST_DIR}/Constants.h"
+	"${CMAKE_CURRENT_LIST_DIR}/StringUtils.h"
+	"${CMAKE_CURRENT_LIST_DIR}/MetaFunction.h"
 	"${CMAKE_CURRENT_LIST_DIR}/ReflectableInterface.h"
 )
 

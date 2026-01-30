@@ -3,13 +3,16 @@
 #include <fstream>
 #include <filesystem>
 
+
 #include "Logger.h"
 #include "ReflectableInterface.h"
+
 
 namespace {
 
 	std::mutex g_mutex;
 }
+
 
 namespace clmirror 
 {
@@ -30,7 +33,9 @@ namespace clmirror
 	}
 
 
-	void ReflectableInterface::addFunctionSignature(const std::string& pSrcFile, const std::string& pHeaderFile, const std::string& pFunctionName, const std::vector<std::string>& pParmTypes)
+	void ReflectableInterface::addFunctionSignature(MetaKind pMetaKind, const std::string& pSrcFile, const std::string& pHeaderFile,
+													const std::string& pRecord, const std::string& pFunctionName,
+													const std::string& pReturn, const std::vector<std::string>& pParmTypes)
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
 
@@ -56,6 +61,17 @@ namespace clmirror
 				headerItr->second.emplace(pFunctionName, pParmTypes);
 			}
 		}
+
+		m_metaFns.push_back(
+			MetaFunction{
+				.fnType = pMetaKind,
+				.fnHeader = pHeaderFile,
+				.fnSource = pSrcFile,
+				.fnName = pFunctionName,
+				.fnRecord = pRecord,
+				.fnReturn = pReturn,
+				.fnArgs = pParmTypes
+			});
 	}
 
 
@@ -69,29 +85,17 @@ namespace clmirror
 			return;
 		}
 		
-		int functionsCount = 0;
-		for (const auto& itr : m_functionSignatureMap)
-		{
-			const FuncHeaderMap& headerMap = itr.second;
-			fout << "\n\nReflecatble functions extracted from file: " << itr.first;
-			for (const auto& itr : headerMap)
-			{
-				fout << "\n#include \"" << itr.first << "\"";
-				const auto& signatureMap = itr.second;
-				for (const auto& parmItr : signatureMap) {
-					fout << "\n\t" << parmItr.first << "(";
-					int index = 0;
-					for (const auto& parmType : parmItr.second) {
-						fout << " " << parmType;
-						if (++index != parmItr.second.size()) {
-							fout << ",";
-						}
-					}
-					fout << " )";
-					functionsCount++;
-				}
+		fout << "\n"
+			"\n#pragma once"
+			"\n#include <string_view>\n\n"
+			"\nnamespace rtcl {\n";
+
+		for (const MetaFunction& fn : m_metaFns) {
+			if (fn.fnType != MetaKind::CtorDtor) {
+				fout << fn.toIdentifierSyntax();
 			}
 		}
+		fout << "\n\n}";
 
 		fout.flush();
 		fout.close();
@@ -100,8 +104,8 @@ namespace clmirror
 			return;
 		}
 
-		Logger::out("Number of reflectable functions generated: " + std::to_string(functionsCount));
-		Logger::out("Number of headerfiles shortlisted, containing reflectable functions declarations: " + std::to_string(m_functionSignatureMap.size()));
+		Logger::out("Number of reflectable functions generated: " + std::to_string(m_metaFns.size()));
+		//Logger::out("Number of headerfiles shortlisted, containing reflectable functions declarations: " + std::to_string(m_functionSignatureMap.size()));
 		Logger::out("Reflection interface file generated : " + fileStr);
 	}
 }
