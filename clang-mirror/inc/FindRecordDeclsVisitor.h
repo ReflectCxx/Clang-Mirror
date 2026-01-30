@@ -13,10 +13,10 @@ namespace clmirror {
         void removeSubStrings(std::string& pSrcStr, const std::vector<std::string>& pKeyStrs);
         void replaceSubString(std::string& pSrcStr, const std::string& pSubstr, const std::string& pReplacestr);
         
-        const bool isInUserCode(const clang::NamedDecl* pNameDecl);
-        const bool isDeclFrmCurrentSource(clang::Decl* pDecl);
+        bool isInUserCode(const clang::NamedDecl* pNameDecl);
+        bool isDeclFrmCurrentSource(clang::Decl* pDecl);
 
-        const bool isMemberFunctionOrInNamespace(clang::FunctionDecl* pFuncDecl);
+        bool isMemberFunctionOrInNamespace(clang::FunctionDecl* pFuncDecl);
         const std::string extractParameterType(clang::ParmVarDecl* pParmVarDecl);
         
         const std::optional<std::string>

@@ -1,6 +1,4 @@
 
-#include <complex>
-
 #include "Complex.h"
 
 namespace complex
@@ -10,8 +8,8 @@ namespace complex
 
 	double getMagnitude()
 	{
-		std::complex<double> z(g_realNumber, g_imgNumber);
-		return std::abs(z);
+		//std::complex<double> z(g_realNumber, g_imgNumber);
+		return 0.0;//std::abs(z);
 	}
 
 	void setReal(double pNum) {

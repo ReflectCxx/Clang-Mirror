@@ -26,7 +26,6 @@ int main(int argc, const char** argv)
     std::cout << clmirror::RESET << std::endl;
 
     auto type = rtcl::type::nsdate::Calender::id;
-
     std::cout << "\n\n" << type << "\n\n";
 
     return 0;

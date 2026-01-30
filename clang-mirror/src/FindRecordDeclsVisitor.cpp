@@ -19,22 +19,35 @@ namespace clmirror
 		, m_unreflectedFunctions(pUnreflectedFunctions)
 	{ }
 
-	const bool FindRecordDeclsVisitor::isInUserCode(const NamedDecl* pNameDecl)
+
+	bool FindRecordDeclsVisitor::isInUserCode(const NamedDecl* pDecl)
 	{
-		if (pNameDecl->getSourceRange().isValid()) {
-			const SourceManager& SM = pNameDecl->getASTContext().getSourceManager();
-			return !(SM.isInSystemHeader(pNameDecl->getLocation()) || SM.isInSystemMacro(pNameDecl->getLocation()));
+		if (!pDecl) {
+			return false;
 		}
-		return false;
+		
+		const SourceManager& SM = pDecl->getASTContext().getSourceManager();
+		SourceLocation loc = pDecl->getLocation();
+		if (!loc.isValid()) {
+			return false;
+		}
+		
+		loc = SM.getSpellingLoc(loc);
+		if (SM.isInSystemHeader(loc)) {
+			return false;
+		}
+
+		return true;
 	}
 
 
-	const bool FindRecordDeclsVisitor::isMemberFunctionOrInNamespace(clang::FunctionDecl* pFuncDecl)
+
+	bool FindRecordDeclsVisitor::isMemberFunctionOrInNamespace(clang::FunctionDecl* pFnDecl)
 	{
-		if (llvm::isa<clang::CXXRecordDecl>(pFuncDecl->getParent())) {
+		if (llvm::isa<clang::CXXRecordDecl>(pFnDecl->getParent())) {
 			return true;
 		}
-		auto currentDecl = pFuncDecl->getParent();
+		auto currentDecl = pFnDecl->getParent();
 		while (currentDecl) {
 			if (const clang::NamespaceDecl* namespaceDecl = llvm::dyn_cast<clang::NamespaceDecl>(currentDecl)) {
 				return true;
@@ -61,7 +74,7 @@ namespace clmirror
 	}
 
 
-	const bool FindRecordDeclsVisitor::isDeclFrmCurrentSource(clang::Decl* pDecl)
+	bool FindRecordDeclsVisitor::isDeclFrmCurrentSource(clang::Decl* pDecl)
 	{
 		std::string currentSrcFile = m_currentSrcFile;
 		std::transform(currentSrcFile.begin(), currentSrcFile.end(), currentSrcFile.begin(),
@@ -103,9 +116,9 @@ namespace clmirror
 
 
 
-	std::string FindRecordDeclsVisitor::extractParentTypeName(clang::FunctionDecl* pFuncDecl)
+	std::string FindRecordDeclsVisitor::extractParentTypeName(clang::FunctionDecl* pFnDecl)
 	{
-		const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFuncDecl);
+		const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFnDecl);
 		if (!method)
 			return {};
 
@@ -113,7 +126,7 @@ namespace clmirror
 
 		clang::QualType qt = record->getTypeForDecl()->getCanonicalTypeInternal();
 
-		clang::PrintingPolicy policy(pFuncDecl->getASTContext().getLangOpts());
+		clang::PrintingPolicy policy(pFnDecl->getASTContext().getLangOpts());
 		policy.SuppressScope = false;
 		policy.SuppressTagKeyword = true;
 		policy.FullyQualifiedName = true;
@@ -218,80 +231,90 @@ namespace clmirror
 	}
 
 
-	bool FindRecordDeclsVisitor::VisitFunctionDecl(FunctionDecl* pFuncDecl)
+	bool FindRecordDeclsVisitor::VisitFunctionDecl(FunctionDecl* pFnDecl)
 	{
-		if (!isInUserCode(pFuncDecl) || pFuncDecl->isDeleted() || pFuncDecl->isInAnonymousNamespace() ||
-			(pFuncDecl->isGlobal() && pFuncDecl->isStatic()) ||
-			pFuncDecl->isOverloadedOperator() || !isDeclFrmCurrentSource(pFuncDecl) ||
-			pFuncDecl->getKind() == Decl::Kind::CXXDestructor ||
-			pFuncDecl->getAccess() == AccessSpecifier::AS_private ||
-			pFuncDecl->getAccess() == AccessSpecifier::AS_protected ||
-			pFuncDecl->getLinkageInternal() != Linkage::External) {
+		if (!isInUserCode(pFnDecl) ||
+			pFnDecl->isDeleted() ||
+			pFnDecl->isInAnonymousNamespace() ||
+			(pFnDecl->isGlobal() && pFnDecl->isStatic()) ||
+			pFnDecl->isOverloadedOperator() ||
+			pFnDecl->getKind() == Decl::Kind::CXXDestructor ||
+			pFnDecl->getAccess() == AS_private ||
+			pFnDecl->getAccess() == AS_protected ||
+			pFnDecl->getLinkageInternal() != Linkage::External) {
 			return true;
 		}
 
-		const auto& functionName = pFuncDecl->getDeclName().getAsString();
-		if (pFuncDecl->isThisDeclarationADefinition() && isMemberFunctionOrInNamespace(pFuncDecl))
+		if (!pFnDecl->isThisDeclarationADefinition()) {
+			return true;
+		}
+		
+		if (pFnDecl->getFirstDecl() == nullptr) {
+			return true;
+		}
+
+		if (!isDeclFrmCurrentSource(pFnDecl)) {
+			return true;
+		}
+
+		std::string declSrcFile;
+		auto& SM = pFnDecl->getASTContext().getSourceManager();
+		for (auto* D : pFnDecl->redecls())
 		{
-			if (pFuncDecl->isInvalidDecl()) {
-				m_unreflectedFunctions.push_back(functionName);
-				return true;
+			SourceLocation loc = SM.getSpellingLoc(D->getLocation());
+			if (!loc.isValid()) {
+				continue;
 			}
 
-			std::string declSrcFile;
-			for (auto funcAsDeclared : pFuncDecl->redecls()) {
-				const auto& srcManager = funcAsDeclared->getASTContext().getSourceManager();
-				const auto& fileLoc = srcManager.getFileLoc(funcAsDeclared->getBeginLoc());
-				const auto& fileName = srcManager.getFilename(fileLoc).str();
-				if (fileName.rfind(".h") != std::string::npos){
-					declSrcFile = fileName;
-					std::replace(declSrcFile.begin(), declSrcFile.end(), '\\', '/');
-					break;
+			StringRef fileName = SM.getFilename(loc);
+			if (fileName.ends_with(".h") || fileName.ends_with(".hpp"))
+			{
+				declSrcFile = fileName.str();
+				break;
+			}
+		}
+
+		const auto& functionName = pFnDecl->getDeclName().getAsString();
+		if (!declSrcFile.empty()) 
+		{
+			std::vector<std::string> parmTypes;
+			const auto& params = pFnDecl->parameters();
+			for (unsigned index = 0; index < params.size(); index++)
+			{
+				if (params[index]->isInAnonymousNamespace()) {
+					return true;
 				}
+				if (params[index]->isInvalidDecl()) {
+					m_unreflectedFunctions.push_back(functionName);
+					return true;
+				}
+				parmTypes.push_back(extractParameterType(params[index]));
 			}
 
-			if (!declSrcFile.empty()) {
-				std::vector<std::string> parmTypes;
-				const auto& params = pFuncDecl->parameters();
-				for (unsigned index = 0; index < params.size(); index++)
-				{
-					if (params[index]->isInAnonymousNamespace()) {
-						return true;
-					}
-					if (params[index]->isInvalidDecl()) {
-						m_unreflectedFunctions.push_back(functionName);
-						return true;
-					}
-					parmTypes.push_back(extractParameterType(params[index]));
-				}
-
-				
-				MetaKind metaKind = MetaKind::MemberFnNonConst;
-				if (llvm::isa<clang::CXXConstructorDecl>(pFuncDecl) || 
-					llvm::isa<clang::CXXDestructorDecl>(pFuncDecl)) {
-					metaKind = MetaKind::CtorDtor;
-				}
-				else if (const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFuncDecl)) {
-					if (method->isStatic()) {
-						metaKind = MetaKind::MemberFnStatic;
-					}
-					else {
-						if (method->isConst()) {
-							metaKind = MetaKind::MemberFnConst;
-						}
-						else {
-							metaKind = MetaKind::MemberFnNonConst;
-						}
-					}
+			MetaKind metaKind = MetaKind::MemberFnNonConst;
+			if (llvm::isa<clang::CXXConstructorDecl>(pFnDecl) ||
+				llvm::isa<clang::CXXDestructorDecl>(pFnDecl)) {
+				metaKind = MetaKind::CtorDtor;
+			}
+			else if (const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFnDecl)) {
+				if (method->isStatic()) {
+					metaKind = MetaKind::MemberFnStatic;
 				}
 				else {
-					metaKind = MetaKind::NonMemberFn;
+					if (method->isConst()) {
+						metaKind = MetaKind::MemberFnConst;
+					}
+					else {
+						metaKind = MetaKind::MemberFnNonConst;
+					}
 				}
-				const std::string recordStr = extractParentTypeName(pFuncDecl);
-
-				ReflectableInterface::Instance().addFunctionSignature(metaKind, m_currentSrcFile, declSrcFile,
-																	  recordStr, functionName, parmTypes);
 			}
+			else {
+				metaKind = MetaKind::NonMemberFn;
+			}
+			const std::string recordStr = extractParentTypeName(pFnDecl);
+			ReflectableInterface::Instance().addFunctionSignature(metaKind, m_currentSrcFile, declSrcFile,
+																  recordStr, functionName, parmTypes);
 		}
 		return true;
 	}
