@@ -21,9 +21,50 @@ namespace clmirror
 
 	}
 
-
 	ReflectableInterface::~ReflectableInterface() {
 
+	}
+
+	ReflectableInterface& ReflectableInterface::Instance()
+	{
+		static ReflectableInterface instance;
+		return instance;
+	}
+
+
+	void ReflectableInterface::printFreeFunctionIds(std::fstream& pOut)
+	{
+		std::unordered_set<std::string> seen;
+		for (auto it = m_metaFns.begin(); it != m_metaFns.end(); ++it)
+		{
+			const std::string& key = it->first;
+			if (!seen.insert(key).second) {
+				continue;
+			}
+			pOut << it->second.toFunctionIdentifierSyntax() << "\n";
+		}
+	}
+
+
+	void ReflectableInterface::printRecordTypeIds(std::fstream& pOut)
+	{
+		for (const auto& itr : m_metaTypes) {
+
+			std::unordered_set<std::string> seen;
+			const auto& methodMap = itr.second.methods;
+			const auto& fnMeta = methodMap.begin()->second;
+
+			pOut << fnMeta.toRecordIdentifierSyntax() << "\n";
+			for (auto it = methodMap.begin(); it != methodMap.end(); ++it)
+			{
+				const std::string& key = it->first;
+				if (!seen.insert(key).second) {
+					continue;
+				}
+				pOut << it->second.toMethodIdentifierSyntax() << "\n";
+			}
+			pOut << "\n";
+		}
 	}
 
 
@@ -31,12 +72,12 @@ namespace clmirror
 	{
 		auto& userType = [&]()-> UserType&
 		{
-			const auto& itr = m_metaTypes.find(pReflMeta.fnRecord);
+			const auto& itr = m_metaTypes.find(pReflMeta.m_record);
 			if (itr == m_metaTypes.end()) 
 			{
-				auto& userType = m_metaTypes.emplace(pReflMeta.fnRecord,
+				auto& userType = m_metaTypes.emplace(pReflMeta.m_record,
 					UserType{
-						.typeStr = pReflMeta.fnRecord,
+						.typeStr = pReflMeta.m_record,
 						.methods = UserType::MemberFnsMap()
 					}).first->second;
 				return userType;
@@ -46,14 +87,7 @@ namespace clmirror
 				return userType;
 			}
 		}();
-		userType.methods.emplace(pReflMeta.fnName, pReflMeta);
-	}
-
-
-	ReflectableInterface& ReflectableInterface::Instance()
-	{
-		static ReflectableInterface instance;
-		return instance;
+		userType.methods.emplace(pReflMeta.m_function, pReflMeta);
 	}
 
 
@@ -63,50 +97,26 @@ namespace clmirror
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
 
-		const auto& srcItr = m_functionSignatureMap.find(pSrcFile);
-		if (srcItr == m_functionSignatureMap.end()) 
+		if (pMetaKind == MetaKind::NonMemberFn) 
 		{
-			FuncSignature funcSigMap;
-			FuncHeaderMap funcHeaderMap;
-			funcSigMap.emplace(pFunctionName, pParmTypes);
-			funcHeaderMap.emplace(pHeaderFile, funcSigMap);
-			m_functionSignatureMap.emplace(pSrcFile, funcHeaderMap);
+			m_metaFns.emplace(pFunctionName, (ReflectionMeta{
+					.m_metaKind = pMetaKind,
+					.m_header = pHeaderFile,
+					.m_source = pSrcFile,
+					.m_record = pRecord,
+					.m_function = pFunctionName,
+					.m_argTypes = pParmTypes
+			}));
 		}
-		else 
+		else if (pMetaKind != MetaKind::None)
 		{
-			auto& funcHeaderMap = srcItr->second;
-			const auto& headerItr = funcHeaderMap.find(pHeaderFile);
-			if (headerItr == funcHeaderMap.end()) {
-				FuncSignature signatureMap;
-				signatureMap.emplace(pFunctionName, pParmTypes);
-				funcHeaderMap.emplace(pHeaderFile, signatureMap);
-			}
-			else {
-				headerItr->second.emplace(pFunctionName, pParmTypes);
-			}
-		}
-
-		if (pMetaKind == MetaKind::MemberFnConst ||
-			pMetaKind == MetaKind::MemberFnNonConst ||
-			pMetaKind == MetaKind::MemberFnStatic) {
-
-			addReflectionMetaAsRecord( ReflectionMeta{
-					.fnType = pMetaKind,
-					.fnHeader = pHeaderFile,
-					.fnSource = pSrcFile,
-					.fnName = pFunctionName,
-					.fnRecord = pRecord,
-					.fnArgs = pParmTypes
-			});
-		}
-		else {
-			m_metaFns.push_back( ReflectionMeta{
-					.fnType = pMetaKind,
-					.fnHeader = pHeaderFile,
-					.fnSource = pSrcFile,
-					.fnName = pFunctionName,
-					.fnRecord = pRecord,
-					.fnArgs = pParmTypes
+			addReflectionMetaAsRecord(ReflectionMeta{
+					.m_metaKind = pMetaKind,
+					.m_header = pHeaderFile,
+					.m_source = pSrcFile,
+					.m_record = pRecord,
+					.m_function = pFunctionName,
+					.m_argTypes = pParmTypes
 			});
 		}
 	}
@@ -122,36 +132,17 @@ namespace clmirror
 			return;
 		}
 		
-		fout << "\n"
-			"\n#pragma once"
-			"\n#include <string_view>\n\n"
-			"\nnamespace rtcl {\n";
+		fout << "\n#pragma once"
+				"\n#include <string_view>\n"
+				"\nnamespace rtcl {\n";
+		
+		printFreeFunctionIds(fout);
+		printRecordTypeIds(fout);
 
-		for (const auto& itr : m_metaTypes) {
-
-			const auto& methodMap = itr.second.methods;
-			const auto& fnMeta = methodMap.begin()->second;
-			fout << fnMeta.toRecordIdentifierSyntax();
-			fout << "\n";
-
-			std::unordered_set<std::string> seen;
-
-			for (auto it = methodMap.begin(); it != methodMap.end(); ++it)
-			{
-				const std::string& key = it->first;
-				if (!seen.insert(key).second)
-					continue;
-
-				fout << it->second.toMethodIdentifierSyntax() << "\n";
-
-				//auto [first, last] = methodMap.equal_range(key);
-			}
-			fout << "\n";
-		}
 		fout << "\n}";
-
 		fout.flush();
 		fout.close();
+
 		if (fout.fail() || fout.bad()) {
 			Logger::outException("Error closing file:" + std::string(CL_REFLECT_INTERFACE));
 			return;

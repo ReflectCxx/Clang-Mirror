@@ -10,18 +10,19 @@ namespace clmirror
 {
 	struct ReflectionMeta 
 	{
-		MetaKind fnType;
+		MetaKind m_metaKind;
 		
-		std::string fnHeader;
-		std::string fnSource;
+		std::string m_header;
+		std::string m_source;
 
-		std::string fnName;
-		std::string fnRecord;
-		std::vector<std::string> fnArgs;
+		std::string m_record;
+		std::string m_function;
 
-		std::string toMethodIdentifierSyntax() const;
+		std::vector<std::string> m_argTypes;
 
 		std::string toRecordIdentifierSyntax() const;
+		std::string toMethodIdentifierSyntax() const;
+		std::string toFunctionIdentifierSyntax() const;
 	};
 
 	struct UserType {

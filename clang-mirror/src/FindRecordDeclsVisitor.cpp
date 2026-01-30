@@ -274,29 +274,34 @@ namespace clmirror
 			}
 		}
 
-		const auto& functionName = pFnDecl->getDeclName().getAsString();
 		if (!declSrcFile.empty()) 
 		{
 			std::vector<std::string> parmTypes;
 			const auto& params = pFnDecl->parameters();
+			const auto& fnQName = pFnDecl->getQualifiedNameAsString();
 			for (unsigned index = 0; index < params.size(); index++)
 			{
 				if (params[index]->isInAnonymousNamespace()) {
+					m_unreflectedFunctions.push_back(fnQName);
 					return true;
 				}
 				if (params[index]->isInvalidDecl()) {
-					m_unreflectedFunctions.push_back(functionName);
+					m_unreflectedFunctions.push_back(fnQName);
 					return true;
 				}
 				parmTypes.push_back(extractParameterType(params[index]));
 			}
 
-			MetaKind metaKind = MetaKind::MemberFnNonConst;
-			if (llvm::isa<clang::CXXConstructorDecl>(pFnDecl) ||
-				llvm::isa<clang::CXXDestructorDecl>(pFnDecl)) {
-				metaKind = MetaKind::CtorDtor;
+			std::string functionName;
+			MetaKind metaKind = MetaKind::None;
+
+			if (llvm::isa<clang::CXXConstructorDecl>(pFnDecl)) 
+			{
+				metaKind = MetaKind::Ctor;
+				functionName = pFnDecl->getDeclName().getAsString();
 			}
-			else if (const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFnDecl)) {
+			else if (const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(pFnDecl)) 
+			{
 				if (method->isStatic()) {
 					metaKind = MetaKind::MemberFnStatic;
 				}
@@ -308,9 +313,11 @@ namespace clmirror
 						metaKind = MetaKind::MemberFnNonConst;
 					}
 				}
+				functionName = pFnDecl->getDeclName().getAsString();
 			}
 			else {
 				metaKind = MetaKind::NonMemberFn;
+				functionName = pFnDecl->getQualifiedNameAsString();
 			}
 			const std::string recordStr = extractParentTypeName(pFnDecl);
 			ReflectableInterface::Instance().addFunctionSignature(metaKind, m_currentSrcFile, declSrcFile,

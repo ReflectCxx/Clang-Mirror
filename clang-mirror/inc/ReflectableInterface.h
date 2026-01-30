@@ -1,9 +1,8 @@
 #pragma once
 
-#include <map>
 #include <vector>
 #include <string>
-
+#include <unordered_map>
 
 namespace clmirror {
 	struct UserType;
@@ -14,15 +13,15 @@ namespace clmirror
 {
 	class ReflectableInterface
 	{
-		using FuncSignature = std::multimap<std::string, std::vector<std::string> >;
-		using FuncHeaderMap = std::map<std::string, FuncSignature>;
-		std::map<std::string, FuncHeaderMap> m_functionSignatureMap;
-
-		std::vector<ReflectionMeta> m_metaFns;
 		std::unordered_map<std::string, UserType> m_metaTypes;
+		std::unordered_multimap<std::string, ReflectionMeta> m_metaFns;
 
 		ReflectableInterface();
 		~ReflectableInterface();
+
+		void printRecordTypeIds(std::fstream& pOut);
+
+		void printFreeFunctionIds(std::fstream& pOut);
 
 		void addReflectionMetaAsRecord(const ReflectionMeta& pReflMeta);
 
