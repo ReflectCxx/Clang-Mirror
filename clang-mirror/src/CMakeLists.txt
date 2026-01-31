@@ -9,7 +9,8 @@ set(CLREFLECT_SRCS
 	"${CMAKE_CURRENT_LIST_DIR}/ReflectableDeclsVisitor.cpp"
 	"${CMAKE_CURRENT_LIST_DIR}/Logger.cpp"
 	"${CMAKE_CURRENT_LIST_DIR}/ReflectionMeta.cpp"
-	"${CMAKE_CURRENT_LIST_DIR}/RTLCodeManager.cpp"
+	"${CMAKE_CURRENT_LIST_DIR}/RtlCodeManager.cpp"
+	"${CMAKE_CURRENT_LIST_DIR}/RtlCodeGenerator.cpp"
     # Add more source files as needed
 )
 

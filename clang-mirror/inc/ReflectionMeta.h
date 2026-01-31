@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <map>
 #include <vector>
 #include <string>
@@ -8,12 +10,11 @@
 
 namespace clmirror
 {
-    struct ReflectionMeta
+    struct RtlFunction
     {
         MetaKind m_metaKind;
 		
         std::string m_header;
-        std::string m_source;
         std::string m_record;
         std::string m_function;
 		
@@ -25,9 +26,9 @@ namespace clmirror
         std::string toFunctionIdentifierSyntax() const;
     };
 
-    struct UserType
+    struct RtlRecord
     {
-        using MemberFnsMap = std::unordered_multimap<std::string, clmirror::ReflectionMeta>;
+        using MemberFnsMap = std::unordered_multimap<std::string, clmirror::RtlFunction>;
         
         std::string typeStr;
         MemberFnsMap methods;

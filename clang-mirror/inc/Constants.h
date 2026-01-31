@@ -57,3 +57,9 @@ namespace clmirror
 		MemberFnNonConst
 	};
 }
+
+
+#define GETTER_CREF(_varType, _name, _var)       \
+inline constexpr const _varType& get##_name() const {  \
+    return _var;                             \
+}

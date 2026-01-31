@@ -58,12 +58,11 @@ namespace clmirror
 			context.setDiagnosticsEngine(std::move(diagOpts), &diagEngine);
 			clangTool.setDiagnosticConsumer(&diagConsumer);
 
-			auto actionFactory = std::make_unique<CLMirrorActionFactory>(context);
+			auto actionFactory = std::make_unique<CLMirrorActionFactory>();
 			clangTool.run(actionFactory.get());
 
-			auto unreflectedFuncs = actionFactory->getUnreflectedFunctions();
 			auto missingHeaderErrors = diagConsumer.getMissingHeaderMsgs();
-			Logger::outReflectError(srcFilePath, unreflectedFuncs, missingHeaderErrors);
+			Logger::outReflectError(srcFilePath, std::vector<std::string>(), missingHeaderErrors);
 		}
 		return 0;
 	}

@@ -4,15 +4,18 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 
 namespace clmirror {
+    class RtlCodeGenerator;
+}
+
+namespace clmirror {
 
     class ReflectableDeclsVisitor : public clang::RecursiveASTVisitor<ReflectableDeclsVisitor>
     {
-        const std::string& m_currentSrcFile;
-        std::vector<std::string>& m_unreflectedFunctions;
+        RtlCodeGenerator& m_codegen;
 
     public:
 
-        ReflectableDeclsVisitor(const std::string& pCurrentSrcFile, std::vector<std::string>& pUnreflectedFunctions);
+        ReflectableDeclsVisitor(const std::string& pCurrentSrcFile);
 
         bool VisitFunctionDecl(clang::FunctionDecl* pFuncDecl);
     };

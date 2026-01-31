@@ -4,7 +4,8 @@
 
 #include "Constants.h"
 #include "StringUtils.h"
-#include "RTLCodeManager.h"
+#include "RtlCodeManager.h"
+#include "RtlCodeGenerator.h"
 #include "ReflectableDeclsUtils.h"
 #include "ReflectableDeclsVisitor.h"
 
@@ -12,9 +13,8 @@ using namespace clang;
 
 namespace clmirror
 {
-	ReflectableDeclsVisitor::ReflectableDeclsVisitor(const std::string& pCurrentSrcFile, std::vector<std::string>& pUnreflectedFunctions)
-		: m_currentSrcFile(pCurrentSrcFile)
-		, m_unreflectedFunctions(pUnreflectedFunctions)
+	ReflectableDeclsVisitor::ReflectableDeclsVisitor(const std::string& pCurrentSrcFile)
+		: m_codegen(RtlCodeManager::Instance().initCodeGenerator(pCurrentSrcFile))
 	{ }
 
 
@@ -40,7 +40,7 @@ namespace clmirror
 			return true;
 		}
 
-		if (!ReflectableDeclsUtils::isDeclFrmCurrentSource(m_currentSrcFile, pFnDecl)) {
+		if (!ReflectableDeclsUtils::isDeclFrmCurrentSource(m_codegen.getSrcFile(), pFnDecl)) {
 			return true;
 		}
 
@@ -69,11 +69,11 @@ namespace clmirror
 			for (unsigned index = 0; index < params.size(); index++)
 			{
 				if (params[index]->isInAnonymousNamespace()) {
-					m_unreflectedFunctions.push_back(fnQName);
+					//m_unreflectedFunctions.push_back(fnQName);
 					return true;
 				}
 				if (params[index]->isInvalidDecl()) {
-					m_unreflectedFunctions.push_back(fnQName);
+					//m_unreflectedFunctions.push_back(fnQName);
 					return true;
 				}
 				parmTypes.push_back(ReflectableDeclsUtils::extractParameterType(params[index]));
@@ -107,8 +107,7 @@ namespace clmirror
 				functionName = pFnDecl->getQualifiedNameAsString();
 			}
 			const std::string recordStr = ReflectableDeclsUtils::extractParentTypeName(pFnDecl);
-			RTLCodeManager::Instance().addFunctionSignature(metaKind, m_currentSrcFile, declSrcFile,
-														    recordStr, functionName, parmTypes);
+			RtlCodeManager::Instance().addFunctionSignature(metaKind, declSrcFile, recordStr, functionName, parmTypes);
 		}
 		return true;
 	}

@@ -9,7 +9,7 @@
 
 namespace clmirror 
 {
-    std::string ReflectionMeta::toFunctionIdentifierSyntax() const
+    std::string RtlFunction::toFunctionIdentifierSyntax() const
     {
         std::vector<std::string> typenames = splitQualifiedName(m_function);
         std::string fnName = typenames.back();
@@ -34,7 +34,7 @@ namespace clmirror
     }
 
 
-    std::string ReflectionMeta::toMethodIdentifierSyntax() const
+    std::string RtlFunction::toMethodIdentifierSyntax() const
     {
         std::vector<std::string> typenames = splitQualifiedName(m_record);
 
@@ -58,7 +58,7 @@ namespace clmirror
     }
 
 
-    std::string ReflectionMeta::toRecordIdentifierSyntax() const
+    std::string RtlFunction::toRecordIdentifierSyntax() const
 	{
         std::vector<std::string> typenames = splitQualifiedName(m_record);
         
@@ -81,7 +81,7 @@ namespace clmirror
     }
 
 
-    std::string ReflectionMeta::toRegistrationDeclSyntax() const
+    std::string RtlFunction::toRegistrationDeclSyntax() const
     {
         std::vector<std::string> typenames = splitQualifiedName(m_record);
 

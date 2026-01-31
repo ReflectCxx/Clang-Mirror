@@ -9,14 +9,8 @@ namespace clmirror
 {
 	class CLMirrorActionFactory : public clang::tooling::FrontendActionFactory
 	{
-		std::vector<std::string> m_unreflectedFunctions;
-
 	public:
 
-		CLMirrorActionFactory(clang::tidy::ClangTidyContext& pContext);
-
 		std::unique_ptr<clang::FrontendAction> create() override;
-
-		const std::vector<std::string>& getUnreflectedFunctions();
 	};
 }

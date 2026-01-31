@@ -15,20 +15,16 @@ namespace {
 	class FindRecordDeclsConsumer : public clang::ASTConsumer
 	{
 		const std::string& m_currentSrcFile;
-		std::vector<std::string>& m_unreflectedFunctions;
 
 	public:
 
-		explicit FindRecordDeclsConsumer(const std::string& pContext, std::vector<std::string>& pUnreflectedFunctions)
-		: m_currentSrcFile(pContext)
-		, m_unreflectedFunctions(pUnreflectedFunctions)
-		{
-
-		}
+		FindRecordDeclsConsumer(const std::string& pSrcFile)
+			: m_currentSrcFile(pSrcFile)
+		{ }
 
 		virtual void HandleTranslationUnit(clang::ASTContext& Context)
 		{
-			clmirror::ReflectableDeclsVisitor visitor(m_currentSrcFile, m_unreflectedFunctions);
+			clmirror::ReflectableDeclsVisitor visitor(m_currentSrcFile);
 			visitor.TraverseDecl(Context.getTranslationUnitDecl());
 		}
 	};
@@ -37,15 +33,10 @@ namespace {
 	class FindRecordDeclsAction : public clang::ASTFrontendAction
 	{
 		std::string m_targetSrcFile;
-		std::vector<std::string>& m_unreflectedFunctions;
 
 	public:
 
-		explicit FindRecordDeclsAction(std::vector<std::string>& pUnreflectedFunctions) 
-		: m_unreflectedFunctions(pUnreflectedFunctions)
-		{
-
-		}
+		FindRecordDeclsAction() = default;
 
 		std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) override
 		{
@@ -56,7 +47,7 @@ namespace {
 //#endif		//--ends--!
 
 			Compiler.getDiagnosticOpts().ShowCarets = false;
-			return std::make_unique<FindRecordDeclsConsumer>(m_targetSrcFile, m_unreflectedFunctions);
+			return std::make_unique<FindRecordDeclsConsumer>(m_targetSrcFile);
 		}
 
 		bool BeginSourceFileAction(clang::CompilerInstance& CI) override {
@@ -70,18 +61,8 @@ namespace {
 
 namespace clmirror {
 
-	CLMirrorActionFactory::CLMirrorActionFactory(clang::tidy::ClangTidyContext& pContext)
-	{
-
-	}
-
 	std::unique_ptr<clang::FrontendAction> CLMirrorActionFactory::create()
 	{
-		return std::make_unique<FindRecordDeclsAction>(m_unreflectedFunctions);
-	}
-
-	const std::vector<std::string>& CLMirrorActionFactory::getUnreflectedFunctions()
-	{
-		return m_unreflectedFunctions;
+		return std::make_unique<FindRecordDeclsAction>();
 	}
 }
